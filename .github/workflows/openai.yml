@@ -1,0 +1,36 @@
+name: Run OpenAI Information to Discord
+
+on:
+  schedule:
+    - cron: '0 * * * *'   # 毎時0分
+  workflow_dispatch:
+
+jobs:
+  run-main:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run main.py
+        env:
+          FEED_URL: https://www.youtube.com/feeds/videos.xml?channel_id=UCXZCJLdBC09xxGZ6gcdrc6A
+          WEBHOOK_URL: ${{ secrets.DISCORD_OPENAI_WEBHOOK_URL }}
+          TRANSLATE: true
+          NAME: OpenAI
+          FETCH_MODE: hours
+          HOURS: 1
+          DIFF_DAYS: 1
+        run: |
+          python main.py "$FEED_URL" "$WEBHOOK_URL" "$TRANSLATE" "$NAME" "$FETCH_MODE" "$HOURS" "$DIFF_DAYS"
