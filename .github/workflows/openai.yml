@@ -36,3 +36,15 @@ jobs:
           DIFF_DAYS: 1
         run: |
           python main.py "$FEED_URL" "$WEBHOOK_URL" "$TRANSLATE" "$NAME" "$FETCH_MODE" "$HOURS" "$DIFF_DAYS"
+
+      - name: Run main.py (alternate FEED_URL)
+        env:
+          FEED_URL: https://openai.com/news/rss.xml
+          WEBHOOK_URL: ${{ secrets.DISCORD_OPENAI_WEBHOOK_URL }}
+          TRANSLATE: true
+          NAME: OpenAI
+          FETCH_MODE: hours
+          HOURS: 1
+          DIFF_DAYS: 1
+        run: |
+          python main.py "$FEED_URL" "$WEBHOOK_URL" "$TRANSLATE" "$NAME" "$FETCH_MODE" "$HOURS" "$DIFF_DAYS"
