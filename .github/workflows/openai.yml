@@ -26,6 +26,8 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Run main.py
+        id: run_youtube
+        continue-on-error: true
         env:
           FEED_URL: https://www.youtube.com/feeds/videos.xml?channel_id=UCXZCJLdBC09xxGZ6gcdrc6A
           WEBHOOK_URL: ${{ secrets.DISCORD_OPENAI_WEBHOOK_URL }}
@@ -38,6 +40,8 @@ jobs:
           python main.py "$FEED_URL" "$WEBHOOK_URL" "$TRANSLATE" "$NAME" "$FETCH_MODE" "$HOURS" "$DIFF_DAYS"
 
       - name: Run main.py (alternate FEED_URL)
+        id: run_openai
+        continue-on-error: true
         env:
           FEED_URL: https://openai.com/news/rss.xml
           WEBHOOK_URL: ${{ secrets.DISCORD_OPENAI_WEBHOOK_URL }}
@@ -48,3 +52,20 @@ jobs:
           DIFF_DAYS: 1
         run: |
           python main.py "$FEED_URL" "$WEBHOOK_URL" "$TRANSLATE" "$NAME" "$FETCH_MODE" "$HOURS" "$DIFF_DAYS"
+
+      - name: Finalize result
+        if: always()
+        run: |
+          echo "run_youtube outcome: ${{ steps.run_youtube.outcome }}"
+          echo "run_openai  outcome: ${{ steps.run_openai.outcome }}"
+
+          failed=0
+          [ "${{ steps.run_youtube.outcome }}" = "failure" ] && failed=1
+          [ "${{ steps.run_openai.outcome }}" = "failure" ] && failed=1
+
+          if [ $failed -ne 0 ]; then
+            echo "One or more feed runs failed."
+            exit 1
+          fi
+
+          echo "All feed runs succeeded."
