@@ -37,7 +37,27 @@ jobs:
           HOURS: 1
           DIFF_DAYS: 1
         run: |
-          python main.py "$FEED_URL" "$WEBHOOK_URL" "$TRANSLATE" "$NAME" "$FETCH_MODE" "$HOURS" "$DIFF_DAYS"
+          max_retries=3
+          attempt=1
+
+          while [ $attempt -le $max_retries ]; do
+            echo "[YouTube] Attempt ${attempt}/${max_retries}"
+
+            if python main.py "$FEED_URL" "$WEBHOOK_URL" "$TRANSLATE" "$NAME" "$FETCH_MODE" "$HOURS" "$DIFF_DAYS"; then
+              echo "[YouTube] Succeeded on attempt ${attempt}."
+              exit 0
+            fi
+
+            if [ $attempt -lt $max_retries ]; then
+              echo "[YouTube] Failed on attempt ${attempt}. Retrying..."
+              sleep 5
+            fi
+
+            attempt=$((attempt + 1))
+          done
+
+          echo "[YouTube] Failed after ${max_retries} attempts."
+          exit 1
 
       - name: Run main.py (alternate FEED_URL)
         id: run_openai
@@ -51,7 +71,27 @@ jobs:
           HOURS: 1
           DIFF_DAYS: 1
         run: |
-          python main.py "$FEED_URL" "$WEBHOOK_URL" "$TRANSLATE" "$NAME" "$FETCH_MODE" "$HOURS" "$DIFF_DAYS"
+          max_retries=3
+          attempt=1
+
+          while [ $attempt -le $max_retries ]; do
+            echo "[OpenAI RSS] Attempt ${attempt}/${max_retries}"
+
+            if python main.py "$FEED_URL" "$WEBHOOK_URL" "$TRANSLATE" "$NAME" "$FETCH_MODE" "$HOURS" "$DIFF_DAYS"; then
+              echo "[OpenAI RSS] Succeeded on attempt ${attempt}."
+              exit 0
+            fi
+
+            if [ $attempt -lt $max_retries ]; then
+              echo "[OpenAI RSS] Failed on attempt ${attempt}. Retrying..."
+              sleep 5
+            fi
+
+            attempt=$((attempt + 1))
+          done
+
+          echo "[OpenAI RSS] Failed after ${max_retries} attempts."
+          exit 1
 
       - name: Finalize result
         if: always()
@@ -64,8 +104,15 @@ jobs:
           [ "${{ steps.run_openai.outcome }}" = "failure" ] && failed=1
 
           if [ $failed -ne 0 ]; then
-            echo "One or more feed runs failed."
+            echo "One or more feed runs failed after retries."
+            echo "## ❌ Workflow failed" >> "$GITHUB_STEP_SUMMARY"
+            echo "At least one feed failed even after 3 attempts." >> "$GITHUB_STEP_SUMMARY"
+            echo "- run_youtube: ${{ steps.run_youtube.outcome }}" >> "$GITHUB_STEP_SUMMARY"
+            echo "- run_openai: ${{ steps.run_openai.outcome }}" >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::One or more feed runs failed after 3 attempts."
             exit 1
           fi
 
+          echo "## ✅ Workflow succeeded" >> "$GITHUB_STEP_SUMMARY"
+          echo "All feed runs succeeded within up to 3 attempts." >> "$GITHUB_STEP_SUMMARY"
           echo "All feed runs succeeded."
